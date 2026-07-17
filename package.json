@@ -1,0 +1,28 @@
+{
+  "name": "payment-test",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.12.0",
+  "workspaces": [
+    "common",
+    "auth",
+    "payment",
+    "payment-ui"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build:packages && npm run build --workspace=@payment-test/payment-ui",
+    "build:packages": "tsc -b common auth payment",
+    "check": "npm run build:packages && npm run typecheck --workspace=@payment-test/payment-ui && npm run lint --workspace=@payment-test/payment-ui",
+    "clean": "tsc -b common auth payment --clean",
+    "dev": "npm run build:packages && npm run dev --workspace=@payment-test/payment-ui"
+  },
+  "devDependencies": {
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@types/node": "22.20.1",
+    "typescript": "npm:@typescript/typescript6@6.0.2"
+  }
+}
