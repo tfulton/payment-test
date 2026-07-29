@@ -1,0 +1,83 @@
+{"kind":"deck","id":"pr/rlk9ac","name":"Deck"}
+{"kind":"layout","layoutId":"fbda92c6-8922-4e09-9c84-ea97f0a42494","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"751ce475-6926-4994-b916-69e42e24986a","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/m6qere","slide":1,"title":"ISD SENIOR LEADERSHIP TEAM  •  JULY 2026","textShapes":5}
+{"kind":"shape","id":"sh/ahwvip87","slide":1,"name":"accent-rule","bbox":[42,41,180,7]}
+{"kind":"textbox","id":"sh/xk7ut47y","slide":1,"name":"eyebrow","text":"ISD SENIOR LEADERSHIP TEAM  •  JULY 2026","textPreview":"ISD SENIOR LEADERSHIP TEAM  •  JULY 2026","textChars":40,"textLines":1,"bbox":[42,68,620,34]}
+{"kind":"textbox","id":"sh/wjedkzqd","slide":1,"name":"headline","text":"Make cash-out feel like\nan ISD experience","textPreview":"Make cash-out feel like | an ISD experience","textChars":41,"textLines":2,"bbox":[42,188,1040,206]}
+{"kind":"textbox","id":"sh/nu5cnupw","slide":1,"name":"recommendation","text":"Advance Plaid Transfer diligence; keep Checkbook Standard ready as fallback.","textPreview":"Advance Plaid Transfer diligence; keep Checkbook Standard ready as fallback.","textChars":76,"textLines":1,"bbox":[42,498,875,92]}
+{"kind":"textbox","id":"sh/2twbep8b","slide":1,"name":"decision-frame","text":"Decision frame: improve the repeat experience without understating treasury, finance, and payment-operations ownership.","textPreview":"Decision frame: improve the repeat experience without understating treasury, finance, and payment-operations ownership.","textChars":119,"textLines":1,"bbox":[42,618,1050,44]}
+{"kind":"shape","id":"sh/9gnup472","slide":1,"name":"source-1","bbox":[42,676,1030,18]}
+{"kind":"textbox","id":"sh/ofetgzqh","slide":1,"name":"page-1","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[1184,671,54,18]}
+{"kind":"notes","id":"nt/m6qere","slide":1,"text":""}
+{"kind":"slide","id":"sl/ul7jxh","slide":2,"title":"Only Plaid Transfer removes the repeat handoff","textShapes":16}
+{"kind":"textbox","id":"sh/uhon61g7","slide":2,"name":"title","text":"Only Plaid Transfer removes the repeat handoff","textPreview":"Only Plaid Transfer removes the repeat handoff","textChars":46,"textLines":1,"bbox":[42,36,1170,62]}
+{"kind":"textbox","id":"sh/h4fm1gfi","slide":2,"name":"subtitle","text":"Findings from the evaluation — not a production-readiness claim","textPreview":"Findings from the evaluation — not a production-readiness claim","textChars":63,"textLines":1,"bbox":[42,108,900,36]}
+{"kind":"shape","id":"sh/g3658byx","slide":2,"name":"FINDING-label-bg","bbox":[42,184,156,32]}
+{"kind":"textbox","id":"sh/36h43qxo","slide":2,"name":"FINDING-label","text":"FINDING","textPreview":"FINDING","textChars":7,"textLines":1,"bbox":[52,190,136,20]}
+{"kind":"textbox","id":"sh/i58nalg3","slide":2,"name":"FINDING-title","text":"Plaid Auth +\nCheckbook Standard","textPreview":"Plaid Auth + | Checkbook Standard","textChars":31,"textLines":2,"bbox":[42,236,350,76]}
+{"kind":"textbox","id":"sh/p8zm50fu","slide":2,"name":"FINDING-body","text":"Plaid adds the initial bank connection, but each cash-out still sends the recipient to Checkbook.","textPreview":"Plaid adds the initial bank connection, but each cash-out still sends the recipient to Checkbook.","textChars":97,"textLines":1,"bbox":[42,328,350,120]}
+{"kind":"shape","id":"sh/47q5cvy9","slide":2,"name":"FINDING-rule","bbox":[42,478,350,2]}
+{"kind":"textbox","id":"sh/rah47qxk","slide":2,"name":"FINDING-verdict","text":"More complexity; the target repeat experience does not change.","textPreview":"More complexity; the target repeat experience does not change.","textChars":62,"textLines":1,"bbox":[42,500,350,98]}
+{"kind":"shape","id":"sh/q98nelgz","slide":2,"name":"FINDING-label-bg","bbox":[465,184,156,32]}
+{"kind":"textbox","id":"sh/kzilwrq9","slide":2,"name":"FINDING-label","text":"FINDING","textPreview":"FINDING","textChars":7,"textLines":1,"bbox":[475,190,136,20]}
+{"kind":"textbox","id":"sh/50bm5wre","slide":2,"name":"FINDING-title","text":"Plaid Auth +\nPlaid Transfer","textPreview":"Plaid Auth + | Plaid Transfer","textChars":27,"textLines":2,"bbox":[465,236,350,76]}
+{"kind":"textbox","id":"sh/ix03uh83","slide":2,"name":"FINDING-body","text":"One bank connection can support later cash-outs inside ISD.","textPreview":"One bank connection can support later cash-outs inside ISD.","textChars":59,"textLines":1,"bbox":[465,328,350,120]}
+{"kind":"shape","id":"sh/jy943m9o","slide":2,"name":"FINDING-rule","bbox":[465,478,350,2]}
+{"kind":"textbox","id":"sh/sn2l0bq5","slide":2,"name":"FINDING-verdict","text":"Strongest customer result; advance to production diligence.","textPreview":"Strongest customer result; advance to production diligence.","textChars":59,"textLines":1,"bbox":[465,500,350,98]}
+{"kind":"shape","id":"sh/tobm9wrq","slide":2,"name":"FINDING + GAP-label-bg","bbox":[888,184,156,32]}
+{"kind":"textbox","id":"sh/61k3y18z","slide":2,"name":"FINDING + GAP-label","text":"FINDING + GAP","textPreview":"FINDING + GAP","textChars":13,"textLines":1,"bbox":[898,190,136,20]}
+{"kind":"textbox","id":"sh/7mt4769k","slide":2,"name":"FINDING + GAP-title","text":"Plaid Auth +\nCheckbook Marketplace","textPreview":"Plaid Auth + | Checkbook Marketplace","textChars":34,"textLines":2,"bbox":[888,236,350,76]}
+{"kind":"textbox","id":"sh/grm54bq1","slide":2,"name":"FINDING + GAP-body","text":"Wallet, linked-bank, funding, and payment flows were implemented. Sandbox wallet funding remained vendor-dependent.","textPreview":"Wallet, linked-bank, funding, and payment flows were implemented. Sandbox wallet funding remained vendor-dependent.","textChars":115,"textLines":1,"bbox":[888,328,350,120]}
+{"kind":"shape","id":"sh/hsvmdgrm","slide":2,"name":"FINDING + GAP-rule","bbox":[888,478,350,2]}
+{"kind":"textbox","id":"sh/p8rmhgjq","slide":2,"name":"FINDING + GAP-verdict","text":"Strategic wallet option; evidence is incomplete and dependency increases.","textPreview":"Strategic wallet option; evidence is incomplete and dependency increases.","textChars":73,"textLines":1,"bbox":[888,500,350,98]}
+{"kind":"textbox","id":"sh/o7ilobil","slide":2,"name":"source-2","text":"Evidence: ISD evaluation and prototype work. Economics, coverage, and production reliability remain unvalidated.","textPreview":"Evidence: ISD evaluation and prototype work. Economics, coverage, and production reliability remain unvalidated.","textChars":112,"textLines":1,"bbox":[42,676,1030,18]}
+{"kind":"textbox","id":"sh/3694f610","slide":2,"name":"page-2","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[1184,671,54,18]}
+{"kind":"notes","id":"nt/ul7jxh","slide":2,"text":""}
+{"kind":"slide","id":"sl/ltdt8v","slide":3,"title":"Start with primary/fallback routing — not optimization","textShapes":8}
+{"kind":"textbox","id":"sh/8nip4jul","slide":3,"name":"title","text":"Start with primary/fallback routing — not optimization","textPreview":"Start with primary/fallback routing — not optimization","textChars":54,"textLines":1,"bbox":[42,36,1170,62]}
+{"kind":"textbox","id":"sh/nm9obet0","slide":3,"name":"lead","text":"Add dynamic routing only after ISD has reliable operational and economic evidence.","textPreview":"Add dynamic routing only after ISD has reliable operational and economic evidence.","textChars":82,"textLines":1,"bbox":[42,116,1125,64]}
+{"kind":"shape","id":"sh/m10729cf","slide":3,"name":"customer-card","bbox":[42,224,565,290]}
+{"kind":"shape","id":"sh/107694bu","slide":3,"name":"business-card","bbox":[632,224,606,290]}
+{"kind":"shape","id":"sh/0zyp0zu9","slide":3,"name":"customer-accent","bbox":[42,224,12,290]}
+{"kind":"shape","id":"sh/zypo7ut4","slide":3,"name":"business-accent","bbox":[632,224,12,290]}
+{"kind":"textbox","id":"sh/exg7y9cj","slide":3,"name":"customer-header","text":"Customer path","textPreview":"Customer path","textChars":13,"textLines":1,"bbox":[78,254,490,42]}
+{"kind":"textbox","id":"sh/5wbql8be","slide":3,"name":"customer-body","text":"1  Connect a bank once through Plaid\n2  Cash out inside the ISD experience\n3  Use Checkbook Standard when fallback is required","textPreview":"1  Connect a bank once through Plaid | 2  Cash out inside the ISD experience | 3  Use Checkbook Standard when fallback is required","textChars":126,"textLines":3,"bbox":[78,318,490,150]}
+{"kind":"textbox","id":"sh/kv2pc3at","slide":3,"name":"business-header","text":"ISD operating obligation","textPreview":"ISD operating obligation","textChars":24,"textLines":1,"bbox":[668,254,520,42]}
+{"kind":"textbox","id":"sh/i18radcf","slide":3,"name":"business-body","text":"• Fund and monitor the Plaid Ledger\n• Reconcile cash and transactions\n• Manage liquidity, reserves, and limits\n• Own returns, failures, support, and duplicate prevention","textPreview":"• Fund and monitor the Plaid Ledger | • Reconcile cash and transactions | • Manage liquidity, reserves, and limits | • Own returns, failu...","textChars":169,"textLines":4,"bbox":[668,318,520,162]}
+{"kind":"shape","id":"sh/j2hs3id0","slide":3,"name":"routing-band","bbox":[42,548,1196,76]}
+{"kind":"textbox","id":"sh/43q9cnul","slide":3,"name":"routing-band-text","text":"Routing v1 = Plaid Transfer primary + Checkbook Standard fallback.  Availability, eligibility, reliability, and cost optimization are later capabilities.","textPreview":"Routing v1 = Plaid Transfer primary + Checkbook Standard fallback.  Availability, eligibility, reliability, and cost optimization are lat...","textChars":153,"textLines":1,"bbox":[68,570,1144,36]}
+{"kind":"shape","id":"sh/54za5svq","slide":3,"name":"source-3","bbox":[42,676,1030,18]}
+{"kind":"textbox","id":"sh/uxor6dw3","slide":3,"name":"page-3","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[1184,671,54,18]}
+{"kind":"notes","id":"nt/ltdt8v","slide":3,"text":""}
+{"kind":"slide","id":"sl/b2g1sq","slide":4,"title":"Authorize diligence — not a production launch","textShapes":22}
+{"kind":"textbox","id":"sh/qhozyd4f","slide":4,"name":"title","text":"Authorize diligence — not a production launch","textPreview":"Authorize diligence — not a production launch","textChars":45,"textLines":1,"bbox":[42,36,1170,62]}
+{"kind":"textbox","id":"sh/d4fi98n6","slide":4,"name":"decision-label","text":"DECISION REQUESTED","textPreview":"DECISION REQUESTED","textChars":18,"textLines":1,"bbox":[42,168,250,26]}
+{"kind":"textbox","id":"sh/s36h03ml","slide":4,"name":"decision","text":"Approve a cross-functional readiness phase with explicit exit gates, while preserving Checkbook Standard.","textPreview":"Approve a cross-functional readiness phase with explicit exit gates, while preserving Checkbook Standard.","textChars":105,"textLines":1,"bbox":[42,208,570,146]}
+{"kind":"textbox","id":"sh/f6h0bi5c","slide":4,"name":"marketplace","text":"Separate strategic choice","textPreview":"Separate strategic choice","textChars":25,"textLines":1,"bbox":[42,420,300,34]}
+{"kind":"textbox","id":"sh/e58z2d4r","slide":4,"name":"marketplace-body","text":"Pursue Checkbook Marketplace only if ISD intentionally wants provider-hosted wallets or balances — not as an incremental cash-out improvement.","textPreview":"Pursue Checkbook Marketplace only if ISD intentionally wants provider-hosted wallets or balances — not as an incremental cash-out improve...","textChars":142,"textLines":1,"bbox":[42,462,565,98]}
+{"kind":"shape","id":"sh/18zidsn2","slide":4,"name":"check-1","bbox":[715,158,34,34]}
+{"kind":"textbox","id":"sh/07qh4nmx","slide":4,"name":"check-1-number","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[715,163,34,20]}
+{"kind":"textbox","id":"sh/vadgze5s","slide":4,"name":"check-1-title","text":"Name accountable owners","textPreview":"Name accountable owners","textChars":23,"textLines":1,"bbox":[772,156,446,32]}
+{"kind":"textbox","id":"sh/u94zqton","slide":4,"name":"check-1-detail","text":"Product, Treasury, Finance, Operations, Engineering","textPreview":"Product, Treasury, Finance, Operations, Engineering","textChars":51,"textLines":1,"bbox":[772,187,446,36]}
+{"kind":"shape","id":"sh/srep0rmh","slide":4,"name":"check-2","bbox":[715,242,34,34]}
+{"kind":"textbox","id":"sh/tsnqtw32","slide":4,"name":"check-2-number","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[715,247,34,20]}
+{"kind":"textbox","id":"sh/6pw7yh4b","slide":4,"name":"check-2-title","text":"Validate commercial and approval terms","textPreview":"Validate commercial and approval terms","textChars":38,"textLines":1,"bbox":[772,240,446,32]}
+{"kind":"textbox","id":"sh/7q58rmlw","slide":4,"name":"check-2-detail","text":"Eligibility, pricing, limits, reserves, and production approval","textPreview":"Eligibility, pricing, limits, reserves, and production approval","textChars":63,"textLines":1,"bbox":[772,271,446,36]}
+{"kind":"shape","id":"sh/gvyp4rmd","slide":4,"name":"check-3","bbox":[715,326,34,34]}
+{"kind":"textbox","id":"sh/hw7qxw3y","slide":4,"name":"check-3-number","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[715,331,34,20]}
+{"kind":"textbox","id":"sh/utg7214n","slide":4,"name":"check-3-title","text":"Design the money and control model","textPreview":"Design the money and control model","textChars":34,"textLines":1,"bbox":[772,324,446,32]}
+{"kind":"textbox","id":"sh/fup8vmls","slide":4,"name":"check-3-detail","text":"Ledger funding, liquidity, reconciliation, and auditability","textPreview":"Ledger funding, liquidity, reconciliation, and auditability","textChars":59,"textLines":1,"bbox":[772,355,446,36]}
+{"kind":"shape","id":"sh/wzups7m9","slide":4,"name":"check-4","bbox":[715,410,34,34]}
+{"kind":"textbox","id":"sh/x036lc3u","slide":4,"name":"check-4-number","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[715,415,34,20]}
+{"kind":"textbox","id":"sh/dgvmpofi","slide":4,"name":"check-4-title","text":"Prove exception operations","textPreview":"Prove exception operations","textChars":26,"textLines":1,"bbox":[772,408,446,32]}
+{"kind":"textbox","id":"sh/cfm5w3ex","slide":4,"name":"check-4-detail","text":"Returns, failures, support, duplicate prevention, fallback triggers","textPreview":"Returns, failures, support, duplicate prevention, fallback triggers","textChars":67,"textLines":1,"bbox":[772,439,446,36]}
+{"kind":"shape","id":"sh/bud4nyxc","slide":4,"name":"check-5","bbox":[715,494,34,34]}
+{"kind":"textbox","id":"sh/qt4nutw7","slide":4,"name":"check-5-number","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[715,499,34,20]}
+{"kind":"textbox","id":"sh/lkf6t8vu","slide":4,"name":"check-5-title","text":"Set pilot gates","textPreview":"Set pilot gates","textChars":15,"textLines":1,"bbox":[772,492,446,32]}
+{"kind":"textbox","id":"sh/0j6503e9","slide":4,"name":"check-5-detail","text":"Success measures, exposure limits, rollback, and launch authority","textPreview":"Success measures, exposure limits, rollback, and launch authority","textChars":65,"textLines":1,"bbox":[772,523,446,36]}
+{"kind":"shape","id":"sh/zixorydo","slide":4,"name":"assumption-band","bbox":[42,602,1196,48]}
+{"kind":"textbox","id":"sh/yhonytw3","slide":4,"name":"assumptions","text":"ASSUMPTIONS TO TEST  •  user coverage  •  acceptable economics  •  safe fallback  •  treasury capacity","textPreview":"ASSUMPTIONS TO TEST  •  user coverage  •  acceptable economics  •  safe fallback  •  treasury capacity","textChars":102,"textLines":1,"bbox":[62,616,1156,22]}
+{"kind":"shape","id":"sh/9of6x8vq","slide":4,"name":"source-4","bbox":[42,676,1030,18]}
+{"kind":"textbox","id":"sh/8n654ne5","slide":4,"name":"page-4","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[1184,671,54,18]}
+{"kind":"notes","id":"nt/b2g1sq","slide":4,"text":""}
