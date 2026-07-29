@@ -2,7 +2,6 @@
   "files": [],
   "references": [
     { "path": "./common" },
-    { "path": "./auth" },
-    { "path": "./payment" }
+    { "path": "./payment-api" }
   ]
 }

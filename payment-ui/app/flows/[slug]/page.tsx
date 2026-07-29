@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PlaidAuthFlow } from "../../../components/plaid-auth-flow";
+import { CheckbookStandardFlow } from "../../../components/checkbook-standard-flow";
+import { PlaidTransferFlow } from "../../../components/plaid-transfer-flow";
+import { CheckbookMarketplaceFlow } from "../../../components/checkbook-marketplace-flow";
 import {
   findPaymentFlow,
   paymentFlows,
@@ -62,10 +66,20 @@ export default async function FlowPage({ params }: FlowPageProps) {
           </p>
         </header>
 
+        {flow.slug === "plaid-transfer" ? (
+          <PlaidTransferFlow />
+        ) : flow.slug === "plaid-checkbook" ? (
+          <CheckbookStandardFlow />
+        ) : flow.slug === "plaid-checkbook-marketplace" ? (
+          <CheckbookMarketplaceFlow />
+        ) : (
+          <PlaidAuthFlow />
+        )}
+
         <div className="mt-8 rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] p-5 text-sm leading-6 text-amber-100/80">
           <strong className="text-amber-200">Implementation boundary:</strong>{" "}
-          this route is UI scaffolding only. Vendor SDKs, credentials, API calls,
-          and final field mappings are intentionally not wired yet.
+          Plaid Auth and durable payment-method storage are shared. Each
+          scenario owns its money movement and provider lifecycle.
         </div>
 
         <ol className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -84,7 +98,7 @@ export default async function FlowPage({ params }: FlowPageProps) {
                 {stage.description}
               </p>
               <div className="mt-8 rounded-xl border border-dashed border-white/10 px-4 py-6 text-center font-mono text-xs text-slate-600">
-                Integration surface reserved
+                Sandbox path active
               </div>
             </li>
           ))}

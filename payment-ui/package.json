@@ -12,12 +12,12 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@payment-test/auth": "*",
     "@payment-test/common": "*",
-    "@payment-test/payment": "*",
+    "@payment-test/payment-api": "*",
     "next": "16.2.10",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "react-plaid-link": "^4.1.1"
   },
   "devDependencies": {
     "@next/env": "16.2.10",

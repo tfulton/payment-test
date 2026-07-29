@@ -1,20 +1,28 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 
-import { env } from "../config/env";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: env.appName,
-    template: `%s | ${env.appName}`,
+    default: "Payment Flow Lab",
+    template: "%s | Payment Flow Lab",
   },
   description: "Side-by-side payment integration test harness",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
+      <head>
+        <Script
+          src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

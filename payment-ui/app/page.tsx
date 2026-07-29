@@ -1,8 +1,9 @@
-import { env } from "../config/env";
 import { FlowCard } from "../components/flow-card";
 import { paymentFlows } from "../lib/payment-flows";
 
 export default function Home() {
+  const plaidEnvironment = process.env.PLAID_ENV ?? "unconfigured";
+
   return (
     <main className="min-h-screen px-5 py-6 sm:px-8 lg:px-10">
       <div className="mx-auto max-w-[1480px]">
@@ -12,12 +13,12 @@ export default function Home() {
               PF
             </span>
             <span className="font-semibold tracking-tight text-white">
-              {env.appName}
+              Payment Flow Lab
             </span>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-400">
             <span className="size-1.5 rounded-full bg-emerald-400" />
-            {env.appEnvironment}
+            Plaid {plaidEnvironment}
           </div>
         </header>
 

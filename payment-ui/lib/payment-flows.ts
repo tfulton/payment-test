@@ -17,7 +17,7 @@ export const paymentFlows = [
     slug: "plaid-transfer",
     title: "Plaid Auth + Plaid Transfer",
     summary:
-      "Keep account connection and money movement within the Plaid ecosystem.",
+      "Cash out demo earnings from the Plaid Ledger to a linked bank account.",
     accent: "cyan",
     providers: ["Plaid Auth", "Plaid Transfer"],
     stages: [
@@ -31,7 +31,7 @@ export const paymentFlows = [
       },
       {
         title: "Review transfer",
-        description: "Confirm account, amount, direction, and rail.",
+        description: "Confirm available earnings, destination, amount, and rail.",
       },
       {
         title: "Submit and observe",
@@ -43,7 +43,7 @@ export const paymentFlows = [
     slug: "plaid-checkbook",
     title: "Plaid Auth + Checkbook.io",
     summary:
-      "Use Plaid for bank authentication and Checkbook.io for direct payment delivery.",
+      "Cash out demo earnings by digital check from the configured Checkbook Sandbox sender.",
     accent: "violet",
     providers: ["Plaid Auth", "Checkbook.io"],
     stages: [
@@ -52,8 +52,8 @@ export const paymentFlows = [
         description: "Plaid Link and account-selection boundary.",
       },
       {
-        title: "Resolve funding details",
-        description: "Provider handoff and bank-detail mapping boundary.",
+        title: "Identify the recipient",
+        description: "Use the selected demo entity's fixture name and email.",
       },
       {
         title: "Create payment",

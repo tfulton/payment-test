@@ -1,20 +1,12 @@
-import { authenticate, type AuthSession } from "@payment-test/auth";
 import type { Result } from "@payment-test/common";
-import { submitPayment, type PaymentRequest } from "@payment-test/payment";
-
-export interface IntegrationRequest {
-  readonly session: AuthSession;
-  readonly payment: PaymentRequest;
-}
+import {
+  processPayment,
+  type PaymentRequest,
+  type PaymentSubmission,
+} from "@payment-test/payment-api";
 
 export function executeIntegration(
-  request: IntegrationRequest,
+  request: PaymentSubmission,
 ): Result<PaymentRequest> {
-  const authentication = authenticate(request.session);
-
-  if (!authentication.ok) {
-    return authentication;
-  }
-
-  return submitPayment(request.payment);
+  return processPayment(request);
 }
