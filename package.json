@@ -17,7 +17,8 @@
     "build:packages": "tsc -b common payment-api",
     "check": "npm run build:packages && npm run typecheck --workspace=@payment-test/payment-ui && npm run lint --workspace=@payment-test/payment-ui",
     "clean": "tsc -b common payment-api --clean",
-    "dev": "npm run build:packages && npm run dev --workspace=@payment-test/payment-ui"
+    "dev": "npm run build:packages && npm run dev --workspace=@payment-test/payment-ui",
+    "test": "npm run build:packages && node --test payment-api/test/*.test.js"
   },
   "devDependencies": {
     "@typescript/native": "npm:typescript@7.0.2",

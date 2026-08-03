@@ -10,8 +10,18 @@ import { dirname, resolve } from "node:path";
 import Database from "better-sqlite3";
 
 const repositoryRoot = findRepositoryRoot(process.cwd());
-const databasePath = resolve(repositoryRoot, "data/payment-test.sqlite");
 const migrationsPath = resolve(repositoryRoot, "payment-api/migrations");
+
+// A test-only override of the database file location. Populated either by
+// PAYMENT_API_TEST_DATABASE_PATH (set before this module is first imported,
+// e.g. via a `--import` preload script) or by calling
+// `resetDatabaseForTests` directly from an isolated test process. Ordinary
+// application startup never sets this, so production/dev behavior is
+// unchanged.
+let databasePathOverride: string | undefined =
+  process.env.PAYMENT_API_TEST_DATABASE_PATH
+    ? resolve(process.env.PAYMENT_API_TEST_DATABASE_PATH)
+    : undefined;
 
 let database: Database.Database | undefined;
 
@@ -28,6 +38,7 @@ export function getDatabase(
     return database;
   }
 
+  const databasePath = resolveDatabasePath();
   mkdirSync(dirname(databasePath), { mode: 0o700, recursive: true });
 
   const nextDatabase = new Database(databasePath);
@@ -43,7 +54,26 @@ export function getDatabase(
 }
 
 export function getDatabasePath(): string {
-  return databasePath;
+  return resolveDatabasePath();
+}
+
+/**
+ * Test-only seam: point subsequent `getDatabase` calls at a fresh SQLite
+ * file and drop the cached connection so migrations re-run against it. Not
+ * exported from the package's public entry point. Never call this from
+ * application code.
+ */
+export function resetDatabaseForTests(nextPath: string): void {
+  if (database) {
+    database.close();
+    database = undefined;
+  }
+
+  databasePathOverride = resolve(nextPath);
+}
+
+function resolveDatabasePath(): string {
+  return databasePathOverride ?? resolve(repositoryRoot, "data/payment-test.sqlite");
 }
 
 function runMigrations(target: Database.Database): void {
