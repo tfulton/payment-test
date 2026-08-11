@@ -14,14 +14,20 @@ export {
   adjustMarketplaceBalance,
   attachMarketplacePaymentMethod,
   CheckbookMarketplaceError,
+  completeMarketplaceCashOutSandbox,
+  createMarketplaceCashOut,
   getMarketplaceLabState,
   provisionMarketplaceParticipant,
   provisionMarketplaceTreasury,
+  refreshMarketplaceProviderState,
+  refreshMarketplaceCashOutStatus,
   registerMarketplaceTreasuryUser,
   refreshMarketplaceWallet,
   syncMarketplaceWallet,
 } from "./checkbook-marketplace.js";
+export type { MarketplaceCashOutResult, MarketplaceCashOutStatusResult } from "./checkbook-marketplace.js";
 export type { MarketplaceParticipant, MarketplaceLedgerEntry, MarketplaceTreasury, MarketplaceTreasuryUser } from "./checkbook-marketplace-repository.js";
+export { getMarketplaceCashOutByIdempotencyKey } from "./checkbook-marketplace-repository.js";
 export {
   addIsdLedgerAdjustment,
   getExpectedMarketplaceWalletBalance,

@@ -5,6 +5,7 @@ import {
   getMarketplaceLabState,
   provisionMarketplaceParticipant,
   provisionMarketplaceTreasury,
+  refreshMarketplaceProviderState,
   refreshMarketplaceWallet,
   registerMarketplaceTreasuryUser,
   syncMarketplaceWallet,
@@ -37,6 +38,8 @@ export async function POST(request: Request) {
       case "provision_treasury":
         await provisionMarketplaceTreasury();
         break;
+      case "refresh_provider_state":
+        return NextResponse.json(await refreshMarketplaceProviderState(id));
       case "sync_wallet":
         return NextResponse.json(await syncMarketplaceWallet(id));
       case "register_treasury":

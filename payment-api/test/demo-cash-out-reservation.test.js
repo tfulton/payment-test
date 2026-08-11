@@ -52,6 +52,7 @@ test("reserving a cash-out moves available earnings into reserved", () => {
 });
 
 test("reservation rejects an amount exceeding available earnings and posts no ledger entries", () => {
+  const entriesBefore = listIsdLedgerEntries("owner1");
   assert.throws(
     () =>
       reserveDemoCashOut({
@@ -66,7 +67,7 @@ test("reservation rejects an amount exceeding available earnings and posts no le
   const balance = getIsdLedgerBalance("owner1");
   assert.equal(balance.availableMinor, 2_500_000);
   assert.equal(balance.reservedMinor, 0);
-  assert.deepEqual(listIsdLedgerEntries("owner1"), []);
+  assert.deepEqual(listIsdLedgerEntries("owner1"), entriesBefore);
 });
 
 test("reservation rejects a zero or negative amount", () => {

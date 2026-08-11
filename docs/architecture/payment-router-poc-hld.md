@@ -652,9 +652,13 @@ Phase gate:
 Goal: decide whether Marketplace adds necessary POC evidence or remains a
 supporting experiment.
 
-This phase is conditionally required. It becomes an implementation phase only
-if product discovery confirms that provider-hosted wallets are part of the
-router POC question.
+The standalone Marketplace experiment is activated and scoped in
+[Phase M1 — Plaid Auth + Checkbook Marketplace Silent Payout](phases/m1-checkbook-marketplace-silent-payout.md).
+Its evidence informs the adapter decision; it does not by itself authorize
+Marketplace integration into the unified router.
+
+The focused evidence phase is active. Marketplace integration into the unified
+router remains conditional on its result and a subsequent product decision.
 
 | Slice | Deliverable | Depends on | Acceptance boundary |
 | --- | --- | --- | --- |

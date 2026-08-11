@@ -26,13 +26,14 @@ The prototypes should establish the real flow of funds, rail eligibility, operat
 - Terminal Sandbox status handling was validated on 2026-07-20: Plaid advanced `pending` to `posted` to `settled`, and Checkbook advanced `UNPAID` to `PAID`. Both provider confirmations posted their corresponding reserved earnings to paid, and repeat completion was locally idempotent.
 - Provider rejection rollback and insufficient-balance protection were also validated: rejected submissions restore available earnings, while over-balance requests fail before the provider call.
 - Each transfer persists one provider-neutral intent plus separate Plaid authorization and transfer operations, including provider request IDs and exact statuses.
-- Checkbook Marketplace now provisions users, verified Plaid-authenticated banks, participant wallets, and an ISD treasury wallet. The UI reconciles each participant's expected wallet backing against the latest Checkbook wallet balance.
+- Checkbook Marketplace now provisions users, verified Plaid-authenticated banks, participant wallets, and an ISD treasury wallet. The proven on-demand cash-out pays directly from treasury to the onboarded participant's default linked bank; participant wallets remain available for other Marketplace experiments.
 - The lab can adopt an existing Marketplace treasury user and discover its funded wallet. Its API key and secret are stored only in the ignored, mode-`0600` Sandbox SQLite database and are never returned by application APIs. Production must replace this local secret-store adapter with managed secret storage/KMS, auditable access, and rotation/revocation procedures.
-- Expected Marketplace wallet backing is `available + reserved`: reservation changes spendability but does not move provider funds; successful settlement lowers the target. Wallet funding from the ISD treasury is idempotent and records a non-balance-changing `manifestation` entry in the canonical ledger.
+- Marketplace cash-outs reserve the operator-entered amount and pay it directly from the ISD treasury to the participant's persisted bank. Existing wallet funding/reconciliation remains a lab capability but is no longer the target cash-out flow.
 - The former experimental Marketplace-only ledger is retired from application reads and writes. Its one test adjustment remains in the legacy table for audit but was intentionally not imported into the canonical balance.
 - One-time Sandbox ACH debit consent records its server timestamp and text version with the authorization operation.
 - ACH debit and credit creation, retry idempotency, and process-durable records were validated in Sandbox on 2026-07-20. Both directions began in Plaid's expected `pending` status.
-- Provider webhook/event synchronization, failed/canceled release handling, returns, and RTP capability checks remain future checkpoints.
+- Checkbook Support confirmed that Marketplace Sandbox autodeposit payments remain `IN_PROCESS` until the payment creator advances them with `PUT /v3/check/webhook/{check_id}`. The lab now exposes this as a distinct Sandbox-only action, reads the payment back as `PAID`, and only then settles the ISD reservation. Both live acceptance payouts completed this sequence on 2026-08-10.
+- Production webhook/event synchronization, failed/canceled release handling, returns, and RTP capability checks remain future checkpoints.
 
 ## Demo cash-out model
 
@@ -45,8 +46,8 @@ The prototypes should establish the real flow of funds, rail eligibility, operat
 
 SQLite is authoritative for each entity's earned, reserved, paid, and fee balances.
 The Plaid Ledger is a central settlement pool. Checkbook participant wallets are
-provider-side manifestations of the same ISD entitlement, not an independent
-accounting source of truth.
+provider-side accounts for separate Marketplace use cases, not an independent
+accounting source of truth or a full mirror of user earnings.
 
 ## Direction vocabulary
 
@@ -147,22 +148,24 @@ The documented standard-product fit is a Checkbook invoice paid by ACH. This is 
 
 #### Internal movement
 
-The implemented funding command creates an idempotent digital payment from the
-ISD treasury wallet to the participant's Marketplace identity with `WALLET` as
-the deposit option, then deposits it to that participant's wallet when
-autodeposit is not active. The amount is the positive difference between
-expected wallet backing and actual wallet balance.
+The existing funding command proves an idempotent treasury-to-participant wallet
+transfer, but the live cash-out proof showed that staging is unnecessary. The
+target path reserves the custom amount and pays it directly from treasury to the
+onboarded participant's linked bank.
 
-No provider call occurs when the treasury is insufficient. When an external
-Plaid Transfer or Checkbook Standard payout leaves the participant wallet above
-the newly reduced ISD target, the UI exposes the excess as a reconciliation
-exception. Automated participant-wallet-to-treasury return remains a separate
-validation because the owner recipient identity and deposit behavior must be
-confirmed with Checkbook.
+No provider call occurs when the ISD entitlement or treasury capacity is
+insufficient. Any unexpected participant-wallet residual becomes a
+reconciliation exception; it must not be treated as additional user earnings.
 
 #### External outbound movement
 
-Fund from the appropriate marketplace wallet and create the external payment. Test ACH first, then RTP with an eligible destination. Record whether the recipient experience remains email/SMS directed or can use a previously established external account.
+For each payout, reserve the custom amount and create the Marketplace payment
+directly from the ISD treasury to the participant's persisted bank. Test ACH
+first, then RTP with an eligible
+destination. Record whether the recipient experience remains silent.
+
+The focused implementation and evidence plan is defined in
+[Phase M1 — Plaid Auth + Checkbook Marketplace Silent Payout](architecture/phases/m1-checkbook-marketplace-silent-payout.md).
 
 #### External inbound movement
 
@@ -321,7 +324,8 @@ Terminal or exceptional states:
 | 2026-07-20 | Keep RTP out of the first Transfer slice until `/transfer/capabilities/get` gates eligible credit destinations. | Accepted |
 | 2026-07-20 | Use one SQLite application ledger for owner-operator/broker earnings across all providers; provider balances are settlement pools only. | Accepted |
 | 2026-07-20 | Replace provider-specific balance reads/writes with one canonical immutable ISD ledger; migrate existing Standard/Plaid history with payment-method and provider-operation snapshots. | Implemented |
-| 2026-07-20 | Mirror `available + reserved` into participant Checkbook wallets, record wallet funding as a ledger manifestation, and surface actual-minus-expected variance for cross-flow reconciliation. | Implemented |
+| 2026-07-20 | Mirror `available + reserved` into participant Checkbook wallets, record wallet funding as a ledger manifestation, and surface actual-minus-expected variance for cross-flow reconciliation. | Implemented experiment; superseded for Marketplace cash-out |
+| 2026-08-07 | Pay the custom cash-out amount directly from the Marketplace treasury to the onboarded participant's linked bank; do not mirror or stage ISD earnings in participant wallets. | Proven in M1-S5; supersedes the earlier staging hypothesis |
 | 2026-07-21 | Use a dedicated Marketplace master user as the ISD wallet-funding identity; keep its Sandbox credentials in the local SQLite secret-store adapter and require a managed vault in production. | Implemented for lab |
 | 2026-07-20 | Seed `owner1`, `owner2`, `broker1`, and `broker2` with $240,000 total earnings and use the same cash-out UX for Plaid Transfer and Checkbook Standard. | Implemented |
 | 2026-07-20 | Require an explicit `PLAID_LEDGER_ID`; fund that Sandbox Ledger with a simulated $500,000 deposit for demo capacity. | Implemented |

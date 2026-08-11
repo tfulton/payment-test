@@ -51,6 +51,24 @@ export interface MarketplaceWalletSyncIntent {
   readonly providerStatus: string | null;
 }
 
+export interface MarketplaceCashOutOperation {
+  readonly externalId: string;
+  readonly providerStatus: string;
+}
+
+export interface MarketplaceCashOutIntent {
+  readonly id: string;
+  readonly demoEntityId: string;
+  readonly amountMinor: number;
+  readonly paymentMethodId: string;
+  readonly bankId: string;
+  readonly status: string;
+  readonly idempotencyKey: string;
+  readonly walletFunding: MarketplaceCashOutOperation | null;
+  readonly walletReversal: MarketplaceCashOutOperation | null;
+  readonly bankPayout: MarketplaceCashOutOperation | null;
+}
+
 interface ParticipantRow {
   demo_entity_id: string;
   checkbook_user_id: string;
@@ -290,6 +308,85 @@ export function recordMarketplaceWalletSyncOperation(input: {
   return findMarketplaceWalletSyncById(input.intentId)!;
 }
 
+export function findOrCreateMarketplaceCashOut(input: {
+  demoEntityId: string;
+  amountMinor: number;
+  paymentMethodId: string;
+  bankId: string;
+  idempotencyKey: string;
+}): MarketplaceCashOutIntent {
+  const existing = findMarketplaceCashOutByIdempotencyKey(input.idempotencyKey);
+  if (existing) {
+    if (
+      existing.demoEntityId !== input.demoEntityId ||
+      existing.amountMinor !== input.amountMinor ||
+      existing.paymentMethodId !== input.paymentMethodId ||
+      existing.bankId !== input.bankId
+    ) throw new Error("Idempotency key was already used for another Marketplace cash-out");
+    return existing;
+  }
+
+  const now = new Date().toISOString();
+  const id = randomUUID();
+  getDatabase("sandbox").prepare(`
+    INSERT INTO payment_intents (
+      id, test_user_id, movement_type, provider_path, amount_minor, currency,
+      payment_method_id, counterparty_type, counterparty_ref, status,
+      idempotency_key, requested_network, created_at, updated_at
+    ) VALUES (?, ?, 'external_credit', 'checkbook_marketplace', ?, 'USD',
+      ?, 'bank', ?, 'ready', ?, 'ach', ?, ?)
+  `).run(
+    id, input.demoEntityId, input.amountMinor, input.paymentMethodId,
+    input.bankId, input.idempotencyKey, now, now,
+  );
+  return findMarketplaceCashOutById(id)!;
+}
+
+export function getMarketplaceCashOutByIdempotencyKey(idempotencyKey: string): MarketplaceCashOutIntent | null {
+  return findMarketplaceCashOutByIdempotencyKey(idempotencyKey);
+}
+
+export function recordMarketplaceCashOutOperation(input: {
+  intentId: string;
+  operationType: "wallet_funding" | "wallet_reversal" | "digital_payment";
+  externalId: string;
+  providerStatus: string;
+}): MarketplaceCashOutIntent {
+  const database = getDatabase("sandbox");
+  const now = new Date().toISOString();
+  database.transaction(() => {
+    database.prepare(`
+      INSERT INTO provider_operations (
+        id, payment_intent_id, provider, operation_type, external_id,
+        provider_status, created_at, updated_at
+      ) VALUES (?, ?, 'checkbook', ?, ?, ?, ?, ?)
+      ON CONFLICT (provider, external_id) DO UPDATE SET
+        provider_status = excluded.provider_status,
+        updated_at = excluded.updated_at
+    `).run(
+      randomUUID(), input.intentId, input.operationType, input.externalId,
+      input.providerStatus, now, now,
+    );
+    database.prepare(`
+      UPDATE payment_intents
+      SET status = CASE WHEN ? = 'digital_payment' THEN 'submitted' ELSE status END,
+          updated_at = ?
+      WHERE id = ?
+    `).run(input.operationType, now, input.intentId);
+  })();
+  return findMarketplaceCashOutById(input.intentId)!;
+}
+
+export function updateMarketplaceCashOutIntentStatus(
+  intentId: string,
+  status: "submitted" | "processing" | "action_required",
+): MarketplaceCashOutIntent {
+  getDatabase("sandbox").prepare(
+    "UPDATE payment_intents SET status = ?, updated_at = ? WHERE id = ?",
+  ).run(status, new Date().toISOString(), intentId);
+  return findMarketplaceCashOutById(intentId)!;
+}
+
 export function addMarketplaceAdjustment(input: {
   demoEntityId: string; amountMinor: number; reason: string;
 }): MarketplaceLedgerEntry {
@@ -334,4 +431,65 @@ function findMarketplaceWalletSyncWhere(where: string, value: string): Marketpla
     WHERE ${where} AND intent.provider_path = 'checkbook_marketplace'
   `).get(value) as { id: string; amount_minor: number; status: string; external_id: string | null; provider_status: string | null } | undefined;
   return row ? { id: row.id, amountMinor: row.amount_minor, status: row.status, externalId: row.external_id, providerStatus: row.provider_status } : null;
+}
+
+function findMarketplaceCashOutByIdempotencyKey(idempotencyKey: string): MarketplaceCashOutIntent | null {
+  return findMarketplaceCashOutWhere("intent.idempotency_key = ?", idempotencyKey);
+}
+
+function findMarketplaceCashOutById(id: string): MarketplaceCashOutIntent | null {
+  return findMarketplaceCashOutWhere("intent.id = ?", id);
+}
+
+function findMarketplaceCashOutWhere(where: string, value: string): MarketplaceCashOutIntent | null {
+  const row = getDatabase("sandbox").prepare(`
+    SELECT intent.id, intent.test_user_id, intent.amount_minor,
+      intent.payment_method_id, intent.counterparty_ref, intent.status,
+      intent.idempotency_key,
+      funding.external_id AS funding_external_id,
+      funding.provider_status AS funding_provider_status,
+      reversal.external_id AS reversal_external_id,
+      reversal.provider_status AS reversal_provider_status,
+      payout.external_id AS payout_external_id,
+      payout.provider_status AS payout_provider_status
+    FROM payment_intents intent
+    LEFT JOIN provider_operations funding
+      ON funding.payment_intent_id = intent.id
+      AND funding.operation_type = 'wallet_funding'
+    LEFT JOIN provider_operations payout
+      ON payout.payment_intent_id = intent.id
+      AND payout.operation_type = 'digital_payment'
+    LEFT JOIN provider_operations reversal
+      ON reversal.payment_intent_id = intent.id
+      AND reversal.operation_type = 'wallet_reversal'
+    WHERE ${where}
+      AND intent.provider_path = 'checkbook_marketplace'
+      AND intent.movement_type = 'external_credit'
+  `).get(value) as {
+    id: string; test_user_id: string; amount_minor: number;
+    payment_method_id: string; counterparty_ref: string; status: string;
+    idempotency_key: string; funding_external_id: string | null;
+    funding_provider_status: string | null; reversal_external_id: string | null;
+    reversal_provider_status: string | null; payout_external_id: string | null;
+    payout_provider_status: string | null;
+  } | undefined;
+  if (!row) return null;
+  return {
+    id: row.id,
+    demoEntityId: row.test_user_id,
+    amountMinor: row.amount_minor,
+    paymentMethodId: row.payment_method_id,
+    bankId: row.counterparty_ref,
+    status: row.status,
+    idempotencyKey: row.idempotency_key,
+    walletFunding: row.funding_external_id && row.funding_provider_status
+      ? { externalId: row.funding_external_id, providerStatus: row.funding_provider_status }
+      : null,
+    walletReversal: row.reversal_external_id && row.reversal_provider_status
+      ? { externalId: row.reversal_external_id, providerStatus: row.reversal_provider_status }
+      : null,
+    bankPayout: row.payout_external_id && row.payout_provider_status
+      ? { externalId: row.payout_external_id, providerStatus: row.payout_provider_status }
+      : null,
+  };
 }

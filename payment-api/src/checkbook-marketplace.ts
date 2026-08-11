@@ -1,9 +1,18 @@
-import { getDemoEntity } from "./demo-cash-out-repository.js";
+import {
+  getDemoCashOutProviderContext,
+  getDemoEntity,
+  listDemoCashOutsForEntity,
+  markDemoCashOutActionRequired,
+  settleDemoCashOut,
+  type DemoCashOut,
+} from "./demo-cash-out-repository.js";
 import {
   addMarketplaceAdjustment,
   completeMarketplaceWalletSync,
+  findOrCreateMarketplaceCashOut,
   findOrCreateMarketplaceWalletSync,
   getMarketplaceCredentials,
+  getMarketplaceCashOutByIdempotencyKey,
   getMarketplaceParticipant,
   getMarketplaceTreasury,
   getMarketplaceTreasuryCredentials,
@@ -11,20 +20,28 @@ import {
   listMarketplaceLedger,
   marketplaceLedgerBalance,
   recordMarketplaceWalletSyncOperation,
+  recordMarketplaceCashOutOperation,
   saveMarketplaceParticipant,
   saveMarketplacePaymentMethod,
   saveMarketplaceWallet,
   saveMarketplaceTreasury,
   saveMarketplaceTreasuryUser,
   updateMarketplaceParticipantStatus,
+  updateMarketplaceCashOutIntentStatus,
   type MarketplaceParticipant,
+  type MarketplaceCashOutIntent,
 } from "./checkbook-marketplace-repository.js";
 import { createCheckbookProcessorToken, PlaidIntegrationError } from "./plaid.js";
 
 const allowedSandboxHosts = new Set(["sandbox.checkbook.io", "api.sandbox.checkbook.io"]);
 
 export class CheckbookMarketplaceError extends Error {
-  constructor(message: string, readonly code: string, readonly status = 502) {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly status = 502,
+    readonly reservationDisposition: "release" | "hold" = "release",
+  ) {
     super(message);
     this.name = "CheckbookMarketplaceError";
   }
@@ -37,6 +54,19 @@ interface PlaidIavResponse {
   accounts?: Array<{ account?: unknown; name?: unknown; routing?: unknown }>;
 }
 interface DigitalPaymentResponse { id?: unknown; status?: unknown; }
+
+export interface MarketplaceCashOutResult {
+  readonly intent: MarketplaceCashOutIntent;
+  readonly walletFunding: { readonly id: string; readonly status: string } | null;
+  readonly walletReversal: { readonly id: string; readonly status: string } | null;
+  readonly bankPayout: { readonly id: string; readonly status: string };
+}
+
+export interface MarketplaceCashOutStatusResult {
+  readonly cashOut: DemoCashOut;
+  readonly providerStatus: string;
+  readonly normalizedStatus: "submitted" | "processing" | "succeeded" | "action_required";
+}
 
 export function getMarketplaceLabState(demoEntityId: string) {
   const entity = getDemoEntity(demoEntityId);
@@ -54,6 +84,7 @@ export function getMarketplaceLabState(demoEntityId: string) {
         ? null
         : actualWalletBalanceMinor - expectedWalletBalanceMinor,
     ledger: listMarketplaceLedger(demoEntityId),
+    cashOuts: listDemoCashOutsForEntity(demoEntityId),
     treasury: getMarketplaceTreasury(),
     treasuryUser: getMarketplaceTreasuryUser(),
   };
@@ -102,6 +133,14 @@ export async function provisionMarketplaceTreasury() {
   const treasury = wallets.wallets?.find((wallet) => wallet.id === id);
   if (treasury) saveMarketplaceTreasury({ id: field(treasury.id, "treasury wallet id"), name: typeof treasury.name === "string" ? treasury.name : null, balanceMinor: moneyMinor(treasury.balance) });
   return getMarketplaceTreasury();
+}
+
+export async function refreshMarketplaceProviderState(demoEntityId: string) {
+  await Promise.all([
+    refreshMarketplaceTreasury(),
+    refreshMarketplaceWallet(demoEntityId),
+  ]);
+  return getMarketplaceLabState(demoEntityId);
 }
 
 export async function registerMarketplaceTreasuryUser(input: {
@@ -155,6 +194,29 @@ export async function refreshMarketplaceWallet(demoEntityId: string): Promise<Ma
     balanceMinor: moneyMinor(wallet.balance),
   });
   return getMarketplaceParticipant(demoEntityId)!;
+}
+
+async function refreshMarketplaceTreasury() {
+  const existing = getMarketplaceTreasury();
+  if (!existing) throw new CheckbookMarketplaceError(
+    "Create or register the Marketplace treasury before refreshing its balance",
+    "MARKETPLACE_TREASURY_REQUIRED", 409,
+  );
+  const data = await request<{ wallets?: WalletResponse[] }>(
+    "/v3/account/wallet",
+    treasuryCredentials(),
+  );
+  const wallet = data.wallets?.find((candidate) => candidate.id === existing.id);
+  if (!wallet) throw new CheckbookMarketplaceError(
+    "Checkbook did not return the configured Marketplace treasury wallet",
+    "MARKETPLACE_TREASURY_NOT_FOUND", 409,
+  );
+  saveMarketplaceTreasury({
+    id: field(wallet.id, "treasury wallet id"),
+    name: typeof wallet.name === "string" ? wallet.name : null,
+    balanceMinor: moneyMinor(wallet.balance),
+  });
+  return getMarketplaceTreasury();
 }
 
 export async function syncMarketplaceWallet(demoEntityId: string) {
@@ -265,6 +327,325 @@ export async function attachMarketplacePaymentMethod(demoEntityId: string, payme
   return getMarketplaceParticipant(demoEntityId)!;
 }
 
+export async function createMarketplaceCashOut(input: {
+  demoEntityId: string;
+  paymentMethodId: string;
+  amountMinor: number;
+  idempotencyKey: string;
+}): Promise<MarketplaceCashOutResult> {
+  if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) {
+    throw new CheckbookMarketplaceError("Cash-out amount is invalid", "INVALID_REQUEST", 400);
+  }
+
+  await refreshMarketplaceProviderState(input.demoEntityId);
+  const state = getMarketplaceLabState(input.demoEntityId);
+  const participant = state.participant;
+  const treasury = state.treasury;
+  const paymentMethod = participant?.attachedPaymentMethod;
+  if (participant?.status !== "VERIFIED") throw new CheckbookMarketplaceError(
+    "The Marketplace participant must be verified", "MARKETPLACE_USER_NOT_VERIFIED", 409,
+  );
+  if (!participant.wallet) throw new CheckbookMarketplaceError(
+    "The Marketplace participant wallet is required", "MARKETPLACE_WALLET_REQUIRED", 409,
+  );
+  if (!paymentMethod || paymentMethod.id !== input.paymentMethodId) throw new CheckbookMarketplaceError(
+    "The selected Plaid account is not attached to this Marketplace user", "MARKETPLACE_PAYMENT_METHOD_REQUIRED", 409,
+  );
+  if (paymentMethod.status !== "VERIFIED") throw new CheckbookMarketplaceError(
+    "The attached Checkbook bank must be verified", "MARKETPLACE_PAYMENT_METHOD_NOT_VERIFIED", 409,
+  );
+  if (!treasury || treasury.providerBalanceMinor === null) throw new CheckbookMarketplaceError(
+    "The ISD treasury wallet balance is unavailable", "TREASURY_BALANCE_UNAVAILABLE", 409,
+  );
+  if (treasury.providerBalanceMinor < input.amountMinor) throw new CheckbookMarketplaceError(
+    `The ISD treasury needs ${usd(input.amountMinor)} but has ${usd(treasury.providerBalanceMinor)}`,
+    "INSUFFICIENT_TREASURY_BALANCE", 409,
+  );
+  const existingIntent = getMarketplaceCashOutByIdempotencyKey(input.idempotencyKey);
+  if (!existingIntent?.walletFunding && participant.wallet.providerBalanceMinor !== 0) throw new CheckbookMarketplaceError(
+    `The participant wallet has ${usd(participant.wallet.providerBalanceMinor ?? 0)}. Reconcile the residual before another cash-out.`,
+    "WALLET_RESIDUAL_RECONCILIATION_REQUIRED", 409,
+  );
+  let intent = findOrCreateMarketplaceCashOut({
+    demoEntityId: input.demoEntityId,
+    amountMinor: input.amountMinor,
+    paymentMethodId: input.paymentMethodId,
+    bankId: paymentMethod.checkbookBankId,
+    idempotencyKey: input.idempotencyKey,
+  });
+  if (intent.bankPayout?.providerStatus === "PAID" || intent.bankPayout?.providerStatus === "IN_PROCESS") return {
+    intent,
+    walletFunding: intent.walletFunding
+      ? { id: intent.walletFunding.externalId, status: intent.walletFunding.providerStatus }
+      : null,
+    walletReversal: intent.walletReversal
+      ? { id: intent.walletReversal.externalId, status: intent.walletReversal.providerStatus }
+      : null,
+    bankPayout: { id: intent.bankPayout.externalId, status: intent.bankPayout.providerStatus },
+  };
+
+  let funding = intent.walletFunding;
+  if (funding?.providerStatus === "UNPAID") {
+    let current: DigitalPaymentResponse;
+    try {
+      current = await request<DigitalPaymentResponse>(
+        `/v3/check/${encodeURIComponent(funding.externalId)}`,
+        treasuryCredentials(),
+      );
+    } catch (cause) {
+      throw cashOutFailure(cause, "Marketplace wallet funding requires reconciliation", "hold");
+    }
+    funding = { externalId: funding.externalId, providerStatus: field(current.status, "wallet-funding payment status") };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "wallet_funding",
+      externalId: funding.externalId, providerStatus: funding.providerStatus,
+    });
+  }
+  if (funding?.providerStatus === "UNPAID") {
+    let deposited: DigitalPaymentResponse;
+    try {
+      deposited = await request<DigitalPaymentResponse>(
+        `/v3/check/deposit/${encodeURIComponent(funding.externalId)}`,
+        requiredParticipantCredentials(input.demoEntityId),
+        {
+          method: "POST",
+          idempotencyKey: `marketplace-cash-out-wallet-deposit:${intent.id}`,
+          body: { account: participant.wallet.id },
+        },
+      );
+    } catch (cause) {
+      throw cashOutFailure(cause, "Marketplace wallet funding requires reconciliation", "hold");
+    }
+    funding = { externalId: funding.externalId, providerStatus: field(deposited.status, "wallet deposit status") };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "wallet_funding",
+      externalId: funding.externalId, providerStatus: funding.providerStatus,
+    });
+  }
+  if (funding && funding.providerStatus !== "PAID") throw new CheckbookMarketplaceError(
+    `Marketplace wallet funding is ${funding.providerStatus}; reconcile it before payout`,
+    "WALLET_FUNDING_PENDING", 409, "hold",
+  );
+
+  let reversal = intent.walletReversal;
+  if (funding && !reversal) {
+    const treasuryUser = state.treasuryUser;
+    if (!treasuryUser) throw new CheckbookMarketplaceError(
+      "Marketplace treasury user is required to reverse staged funds",
+      "TREASURY_USER_REQUIRED", 409, "hold",
+    );
+    let response: DigitalPaymentResponse;
+    try {
+      response = await request<DigitalPaymentResponse>("/v3/check/digital", requiredParticipantCredentials(input.demoEntityId), {
+        method: "POST",
+        idempotencyKey: `marketplace-cash-out-reverse:${intent.id}`,
+        body: {
+          name: "ISD Marketplace Treasury",
+          amount: input.amountMinor / 100,
+          account: participant.wallet.id,
+          recipient: treasuryUser.checkbookUserRef,
+          deposit_options: ["WALLET"],
+        },
+      });
+    } catch (cause) {
+      throw cashOutFailure(cause, "Unable to return staged funds to the treasury", "hold");
+    }
+    reversal = {
+      externalId: field(response.id, "wallet-reversal payment id"),
+      providerStatus: field(response.status, "wallet-reversal payment status"),
+    };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "wallet_reversal",
+      externalId: reversal.externalId, providerStatus: reversal.providerStatus,
+    });
+  }
+  if (reversal?.providerStatus === "UNPAID") {
+    let deposited: DigitalPaymentResponse;
+    try {
+      deposited = await request<DigitalPaymentResponse>(
+        `/v3/check/deposit/${encodeURIComponent(reversal.externalId)}`,
+        treasuryCredentials(),
+        {
+          method: "POST",
+          idempotencyKey: `marketplace-cash-out-reversal-deposit:${intent.id}`,
+          body: { account: treasury.id },
+        },
+      );
+    } catch (cause) {
+      throw cashOutFailure(cause, "Staged-fund reversal requires reconciliation", "hold");
+    }
+    reversal = { externalId: reversal.externalId, providerStatus: field(deposited.status, "wallet-reversal deposit status") };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "wallet_reversal",
+      externalId: reversal.externalId, providerStatus: reversal.providerStatus,
+    });
+  }
+  if (reversal && reversal.providerStatus !== "PAID") throw new CheckbookMarketplaceError(
+    `Staged-fund reversal is ${reversal.providerStatus}; reconciliation is required`,
+    "WALLET_REVERSAL_PENDING", 409, "hold",
+  );
+
+  const payoutPersistedAtStart = intent.bankPayout !== null;
+  let payout = intent.bankPayout;
+  if (!payout) {
+    let response: DigitalPaymentResponse;
+    try {
+      response = await request<DigitalPaymentResponse>("/v3/check/digital", treasuryCredentials(), {
+        method: "POST",
+        idempotencyKey: `marketplace-cash-out-payout:${intent.id}`,
+        body: {
+          name: state.entity.displayName,
+          amount: input.amountMinor / 100,
+          account: treasury.id,
+          recipient: participant.checkbookUserRef,
+          deposit_options: ["BANK"],
+        },
+      });
+    } catch (cause) {
+      throw cashOutFailure(cause, "The treasury-to-bank payout was not confirmed", "hold");
+    }
+    payout = {
+      externalId: field(response.id, "bank-payout payment id"),
+      providerStatus: field(response.status, "bank-payout payment status"),
+    };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "digital_payment",
+      externalId: payout.externalId, providerStatus: payout.providerStatus,
+    });
+  }
+
+  if (payoutPersistedAtStart && payout.providerStatus === "UNPAID") {
+    let current: DigitalPaymentResponse;
+    try {
+      current = await request<DigitalPaymentResponse>(
+        `/v3/check/${encodeURIComponent(payout.externalId)}`,
+        treasuryCredentials(),
+      );
+    } catch (cause) {
+      throw cashOutFailure(cause, "The bank payout requires reconciliation", "hold");
+    }
+    payout = { externalId: payout.externalId, providerStatus: field(current.status, "bank-payout payment status") };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "digital_payment",
+      externalId: payout.externalId, providerStatus: payout.providerStatus,
+    });
+  }
+  if (payout.providerStatus === "UNPAID") {
+    let deposited: DigitalPaymentResponse;
+    try {
+      deposited = await request<DigitalPaymentResponse>(
+        `/v3/check/deposit/${encodeURIComponent(payout.externalId)}`,
+        requiredParticipantCredentials(input.demoEntityId),
+        {
+          method: "POST",
+          idempotencyKey: `marketplace-cash-out-bank-deposit:${intent.id}`,
+          body: { account: paymentMethod.checkbookBankId },
+        },
+      );
+    } catch (cause) {
+      throw cashOutFailure(cause, "The bank payout requires reconciliation", "hold");
+    }
+    payout = { externalId: payout.externalId, providerStatus: field(deposited.status, "bank deposit status") };
+    intent = recordMarketplaceCashOutOperation({
+      intentId: intent.id, operationType: "digital_payment",
+      externalId: payout.externalId, providerStatus: payout.providerStatus,
+    });
+  }
+  if (payout.providerStatus !== "PAID" && payout.providerStatus !== "IN_PROCESS") {
+    throw new CheckbookMarketplaceError(
+      `Marketplace bank payout is ${payout.providerStatus}; reconciliation is required`,
+      "BANK_PAYOUT_PENDING", 409, "hold",
+    );
+  }
+
+  return {
+    intent,
+    walletFunding: funding ? { id: funding.externalId, status: funding.providerStatus } : null,
+    walletReversal: reversal ? { id: reversal.externalId, status: reversal.providerStatus } : null,
+    bankPayout: { id: payout.externalId, status: payout.providerStatus },
+  };
+}
+
+export async function refreshMarketplaceCashOutStatus(cashOutId: string): Promise<MarketplaceCashOutStatusResult> {
+  const context = getDemoCashOutProviderContext(cashOutId);
+  if (context.providerPath !== "checkbook_marketplace") throw new CheckbookMarketplaceError(
+    "Cash-out is not a Checkbook Marketplace payment", "INVALID_PROVIDER_PATH", 409,
+  );
+  if (context.status === "succeeded") return {
+    cashOut: context,
+    providerStatus: context.providerStatus,
+    normalizedStatus: "succeeded",
+  };
+  if (context.status !== "submitted" && context.status !== "action_required") {
+    throw new CheckbookMarketplaceError(
+      `Marketplace cash-out cannot be refreshed from ${context.status}`,
+      "INVALID_CASH_OUT_STATUS", 409,
+    );
+  }
+
+  const payment = await request<DigitalPaymentResponse>(
+    `/v3/check/${encodeURIComponent(context.providerExternalId)}`,
+    treasuryCredentials(),
+  );
+  const providerStatus = field(payment.status, "bank-payout payment status");
+  recordMarketplaceCashOutOperation({
+    intentId: context.providerIntentId!,
+    operationType: "digital_payment",
+    externalId: context.providerExternalId,
+    providerStatus,
+  });
+
+  if (providerStatus === "PAID") return {
+    cashOut: settleDemoCashOut({
+      id: context.id,
+      providerExternalId: context.providerExternalId,
+      providerStatus,
+    }),
+    providerStatus,
+    normalizedStatus: "succeeded",
+  };
+  if (providerStatus === "IN_PROCESS") {
+    updateMarketplaceCashOutIntentStatus(context.providerIntentId!, "processing");
+    return { cashOut: context, providerStatus, normalizedStatus: "processing" };
+  }
+  if (providerStatus === "UNPAID") {
+    updateMarketplaceCashOutIntentStatus(context.providerIntentId!, "submitted");
+    return { cashOut: context, providerStatus, normalizedStatus: "submitted" };
+  }
+
+  updateMarketplaceCashOutIntentStatus(context.providerIntentId!, "action_required");
+  return {
+    cashOut: markDemoCashOutActionRequired(context.id),
+    providerStatus,
+    normalizedStatus: "action_required",
+  };
+}
+
+export async function completeMarketplaceCashOutSandbox(cashOutId: string): Promise<MarketplaceCashOutStatusResult> {
+  const context = getDemoCashOutProviderContext(cashOutId);
+  if (context.providerPath !== "checkbook_marketplace") throw new CheckbookMarketplaceError(
+    "Cash-out is not a Checkbook Marketplace payment", "INVALID_PROVIDER_PATH", 409,
+  );
+  if (context.status === "succeeded") return {
+    cashOut: context,
+    providerStatus: context.providerStatus,
+    normalizedStatus: "succeeded",
+  };
+  if (context.status !== "submitted" && context.status !== "action_required") {
+    throw new CheckbookMarketplaceError(
+      `Marketplace cash-out cannot be completed from ${context.status}`,
+      "INVALID_CASH_OUT_STATUS", 409,
+    );
+  }
+
+  await request<void>(
+    `/v3/check/webhook/${encodeURIComponent(context.providerExternalId)}`,
+    treasuryCredentials(),
+    { method: "PUT", body: { status: "PAID" } },
+  );
+  return refreshMarketplaceCashOutStatus(cashOutId);
+}
+
 export function adjustMarketplaceBalance(input: { demoEntityId: string; amount: string; reason: string }) {
   getMarketplaceLabState(input.demoEntityId);
   const amountMinor = parseSignedUsd(input.amount);
@@ -291,7 +672,7 @@ async function request<T>(path: string, credentials: { key: string; secret: stri
   });
   const data: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
-    const message = typeof data === "object" && data && "message" in data ? String(data.message) : "Checkbook rejected the Marketplace request";
+    const message = checkbookErrorMessage(data);
     throw new CheckbookMarketplaceError(message, "CHECKBOOK_MARKETPLACE_REQUEST_FAILED", response.status >= 400 && response.status < 500 ? response.status : 502);
   }
   return data as T;
@@ -310,3 +691,18 @@ function demoUserRef(id: string): string { return `tfulton+${id}@isheepdog.com`;
 function moneyMinor(value: unknown): number | null { return typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) : null; }
 function parseSignedUsd(value: string): number { if (!/^-?\d+(?:\.\d{1,2})?$/.test(value.trim())) throw new CheckbookMarketplaceError("Enter a valid USD amount", "INVALID_REQUEST", 400); const minor = Math.round(Number(value) * 100); if (!Number.isSafeInteger(minor) || minor === 0) throw new CheckbookMarketplaceError("Adjustment cannot be zero", "INVALID_REQUEST", 400); return minor; }
 function usd(minor: number): string { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(minor / 100); }
+function checkbookErrorMessage(data: unknown): string {
+  if (!data || typeof data !== "object") return "Checkbook rejected the Marketplace request";
+  const value = data as Record<string, unknown>;
+  for (const key of ["message", "error", "detail", "description"]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim().slice(0, 500);
+  }
+  return "Checkbook rejected the Marketplace request";
+}
+function cashOutFailure(cause: unknown, fallback: string, disposition: "release" | "hold"): CheckbookMarketplaceError {
+  if (cause instanceof CheckbookMarketplaceError) {
+    return new CheckbookMarketplaceError(cause.message, cause.code, cause.status, disposition);
+  }
+  return new CheckbookMarketplaceError(fallback, "CHECKBOOK_MARKETPLACE_REQUEST_FAILED", 502, disposition);
+}

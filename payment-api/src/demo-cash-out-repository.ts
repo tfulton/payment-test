@@ -61,6 +61,10 @@ export interface DemoCashOutHistoryEntry {
   readonly status: DemoCashOutStatus;
   readonly providerStatus: string | null;
   readonly providerExternalId: string | null;
+  readonly paymentMethodLabel: string | null;
+  readonly paymentMethodMask: string | null;
+  readonly requestedNetwork: string | null;
+  readonly effectiveNetwork: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -100,6 +104,10 @@ interface CashOutHistoryRow {
   readonly status: DemoCashOutStatus;
   readonly provider_status: string | null;
   readonly provider_external_id: string | null;
+  readonly payment_method_label: string | null;
+  readonly payment_method_mask: string | null;
+  readonly requested_network: string | null;
+  readonly effective_network: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -153,6 +161,10 @@ export function listDemoCashOutsForEntity(
           cash_outs.status,
           operation.provider_status,
           operation.external_id AS provider_external_id,
+          TRIM(COALESCE(item.institution_name || ' · ', '') || COALESCE(method.name, '')) AS payment_method_label,
+          method.mask AS payment_method_mask,
+          intent.requested_network,
+          intent.effective_network,
           cash_outs.created_at,
           cash_outs.updated_at
         FROM demo_cash_outs AS cash_outs
@@ -169,6 +181,12 @@ export function listDemoCashOutsForEntity(
               candidate.updated_at DESC
             LIMIT 1
           )
+        LEFT JOIN payment_intents AS intent
+          ON intent.id = cash_outs.provider_intent_id
+        LEFT JOIN payment_methods AS method
+          ON method.id = intent.payment_method_id
+        LEFT JOIN plaid_items AS item
+          ON item.id = method.plaid_item_id
         WHERE cash_outs.demo_entity_id = ?
         ORDER BY cash_outs.created_at DESC, cash_outs.id DESC
       `,
@@ -183,6 +201,10 @@ export function listDemoCashOutsForEntity(
     status: row.status,
     providerStatus: row.provider_status,
     providerExternalId: row.provider_external_id,
+    paymentMethodLabel: row.payment_method_label || null,
+    paymentMethodMask: row.payment_method_mask,
+    requestedNetwork: row.requested_network,
+    effectiveNetwork: row.effective_network,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -204,6 +226,7 @@ export function getDemoCashOutProviderContext(
           AND operation.operation_type = CASE cash_outs.provider_path
             WHEN 'plaid_transfer' THEN 'transfer'
             WHEN 'checkbook_standard' THEN 'digital_payment'
+            WHEN 'checkbook_marketplace' THEN 'digital_payment'
           END
         WHERE cash_outs.id = ?
       `,
@@ -326,7 +349,7 @@ export function markDemoCashOutSubmitted(
     .prepare(`
       UPDATE demo_cash_outs
       SET status = 'submitted', provider_intent_id = ?, updated_at = ?
-      WHERE id = ? AND status IN ('reserved', 'submitted')
+      WHERE id = ? AND status IN ('reserved', 'submitted', 'action_required')
     `)
     .run(providerIntentId, new Date().toISOString(), id);
 
@@ -337,7 +360,7 @@ export function markDemoCashOutActionRequired(id: string): DemoCashOut {
   getDatabase("sandbox")
     .prepare(`
       UPDATE demo_cash_outs SET status = 'action_required', updated_at = ?
-      WHERE id = ? AND status = 'reserved'
+      WHERE id = ? AND status IN ('reserved', 'submitted', 'action_required')
     `)
     .run(new Date().toISOString(), id);
 
