@@ -180,6 +180,7 @@ function Metric({ label, value, note }: { label: string; value: string; note: st
 function MiniMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/10 bg-slate-950/30 p-3"><p className="font-mono text-[0.65rem] text-slate-500 uppercase">{label}</p><p className="mt-1 font-semibold text-white">{value}</p></div>; }
 function MarketplaceCashOutCard({ amount, busy, cashOutResult, isRetry, onAction, onAmountChange, onSubmit, plaidContext, state }: { amount: string; busy: string | null; cashOutResult: CashOutResult | null; isRetry: boolean; onAction: (name: string, extra?: Record<string, unknown>) => Promise<void>; onAmountChange: (value: string) => void; onSubmit: () => Promise<void>; plaidContext: PlaidFlowReadyContext | null; state: State }) {
   const amountReady = isCashOutAmountValid(amount, state.ledgerBalanceMinor);
+  const amountEntered = amount.trim().length > 0;
   const attached = state.participant?.attachedPaymentMethod;
   const walletBalance = state.participant?.wallet?.providerBalanceMinor;
   const treasuryBalance = state.treasury?.providerBalanceMinor;
@@ -208,12 +209,20 @@ function MarketplaceCashOutCard({ amount, busy, cashOutResult, isRetry, onAction
         <p className={attached?.status === "VERIFIED" ? "mt-1 text-emerald-200" : "mt-1 text-amber-200"}>{attached?.status === "VERIFIED" ? "✓ Bank attached to this Marketplace user" : "○ Attach the payout account to Checkbook"}</p>
         <p className={treasuryReady ? "mt-1 text-emerald-200" : "mt-1 text-amber-200"}>{treasuryReady ? `✓ ${usd(treasuryBalance)} treasury capacity; direct payout on demand` : "○ Refresh or fund the ISD treasury"}</p>
         <p className="mt-1 text-slate-400">Current participant wallet: {walletBalance == null ? "unavailable" : usd(walletBalance)}; not used for new cash-outs</p>
-        <p className={amountReady ? "mt-1 text-emerald-200" : "mt-1 text-amber-200"}>{amountReady ? `✓ Custom cash-out amount: $${amount}` : "○ Enter a valid custom cash-out amount"}</p>
+        <p className={amountReady || (!amountEntered && cashOutResult) ? "mt-1 text-emerald-200" : amountEntered ? "mt-1 text-rose-200" : "mt-1 text-slate-400"}>
+          {amountReady
+            ? `✓ Custom cash-out amount: $${amount}`
+            : !amountEntered && cashOutResult
+              ? "✓ Cash-out submitted. Enter another amount when ready."
+              : amountEntered
+                ? "○ Enter an amount within the available balance, using at most two decimal places."
+                : "○ Enter a custom cash-out amount."}
+        </p>
       </div>
       {!attached && plaidContext ? <button className="w-fit rounded-xl border border-violet-300/30 bg-violet-300/10 px-4 py-3 text-sm font-semibold text-violet-100 disabled:opacity-50" disabled={busy !== null} onClick={() => void onAction("attach_payment_method", { paymentMethodId: plaidContext.paymentMethodId })} type="button">{busy === "attach_payment_method" ? "Attaching payout account…" : "Attach payout account to Checkbook"}</button> : null}
       <button className="w-fit rounded-xl bg-violet-300 px-4 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canSubmit} onClick={() => void onSubmit()} type="button">{busy === "cash_out" ? "Submitting Sandbox cash-out…" : !amountReady ? "Enter a cash-out amount" : setupBlockers.length > 0 ? "Complete cash-out setup" : !treasuryCoversAmount ? "Insufficient treasury balance" : isRetry ? "Resume held Marketplace cash-out" : "Cash out with Checkbook Marketplace"}</button>
       <p className="text-xs leading-5 text-slate-500">Sandbox command: reserve the exact custom amount in the ISD ledger, then pay it directly from the treasury wallet to the persisted bank account.</p>
-      {cashOutResult ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100"><p className="font-semibold">Cash-out submitted</p>{cashOutResult.payment.walletReversal ? <p className="mt-1">Staging reversal: {cashOutResult.payment.walletReversal.status} · <span className="font-mono text-xs">{cashOutResult.payment.walletReversal.id}</span></p> : null}<p className="mt-1">Bank payout: {cashOutResult.payment.bankPayout.status} · <span className="font-mono text-xs">{cashOutResult.payment.bankPayout.id}</span></p></div> : null}
+      {cashOutResult ? <div aria-live="polite" className="rounded-xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100" role="status"><p className="font-semibold">Cash-out submitted</p>{cashOutResult.payment.walletReversal ? <p className="mt-1">Staging reversal: {cashOutResult.payment.walletReversal.status} · <span className="font-mono text-xs">{cashOutResult.payment.walletReversal.id}</span></p> : null}<p className="mt-1">Bank payout: {cashOutResult.payment.bankPayout.status} · <span className="font-mono text-xs">{cashOutResult.payment.bankPayout.id}</span></p></div> : null}
     </div>
   </section>;
 }
